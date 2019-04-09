@@ -1,103 +1,56 @@
-from multiprocessing import Process
+from flask import Flask
+from flask import request
+from flask import json
 import os
-import redis
-import pika
-import time
+
 import logging
 
-def dealRequest(ch, method, properties, body):
-    logging.info(" [x] Received %r" % (body,))
-    time.sleep( body.count('.') )
-    logging.info(" [x] Done")
-    ch.basic_ack(delivery_tag = method.delivery_tag)
+app = Flask(__name__)
+ 
+@app.route("/")
+def hello():
+    return "Welcome to XIZHI server"
 
-class server(object):
-    def __init__(self):
-        Logger = logging.getLogger(__name__)
+@app.route("/v1/analyze", methods=["POST"])
+def analyze():
+    body = request.get_json()
+    if (body == None):
+        data = {
+            "message": "malformed json body"
+        }
+        response = app.response_class(
+            response=json.dumps(data),
+            status=400,
+            mimetype='application/json'
+        )
+        return response
+    return "", 200
 
-        mqHost = os.environ.get('MQ_HOST')
-        mqPort = os.environ.get('MQ_PORT')
-        mqUser = os.environ.get('MQ_USER')
-        mqPw = os.environ.get('MQ_PASSWORD')
-        self.queueName = os.environ.get('QUEUE')
-
-        redisHost = os.environ.get('REDIS_HOST')
-        redisPort = os.environ.get('REDIS_PORT')
-        redisCh = os.environ.get('REDIS_CH')
-
-        loglevel = os.environ.get('LOG_LEVEL')
-
-        if loglevel == None:
-            Logger.setLevel(logging.INFO)
-            logging.info("logging level is not set, set it as info level")
-        else:
-            if loglevel == "CRITICAL":
-                Logger.setLevel(logging.CRITICAL)
-                logging.critical("logging level is now set to CRITICAL")
-            elif loglevel == "ERROR":
-                Logger.setLevel(logging.ERROR)
-                logging.error("logging level is now set to ERROR")
-            elif loglevel == "WARNING":
-                Logger.setLevel(logging.WARNING)
-                logging.warning("logging level is now set to WARNING")
-            elif loglevel == "INFO":
-                Logger.setLevel(logging.INFO)
-                logging.info("logging level is now set to INFO")
-            elif loglevel == "DEBUG":
-                Logger.setLevel(logging.DEBUG)
-                logging.debug("logging level is now set to DEBUG")
-            else:
-                Logger.setLevel(logging.INFO)
-                logging.info("logging level is set to a invalid value, set it as INFO")
-
-        if mqHost == None or mqPort == None or mqUser == None or mqPw == None or self.queueName == None or redisHost == None or redisPort == None or redisCh == None:
-            logging.error("one of the required environment variable is not set")
-            exit(1)
-        
-        retryCnt = 0
-        self.r = None
-        while (retryCnt < 5):
-            try:
-                self.r = redis.Redis(host=redisHost, port=redisPort)
-                self.r.set("xizhi", "ok")
-                break
-            except redis.ConnectionError:
-                logging.error(" [x] redis connection failed, retrying...")
-                time.sleep(5)
-        if (retryCnt >= 5):
-            logging.error(" [x] has retried for 5 times for redis connection, abort")
-            exit(1)
-
-        retryCnt = 0
-
-        self.mq = None
-        while (retryCnt < 5):
-            try:
-                credentials = pika.PlainCredentials(mqUser, mqPw)
-                connectParam = pika.ConnectionParameters(host = mqHost, port = mqPort, virtual_host = '/', credentials = credentials)
-                self.mq = pika.BlockingConnection(connectParam)
-                break
-            except pika.exceptions.AMQPConnectionError:
-                logging.error(" [x] rabbitmq connection failed, retrying...")
-                time.sleep(5)
-        if (retryCnt >= 5):
-            logging.error(" [x] has retried for 5 times for rabbitmq connection, abort")
-            exit(1)
-        
-        ch = self.mq.channel()
-        ch.queue_declare(queue=self.queueName, durable=False)
-        ch.close()
-
-    def forever_runner(self):
-        channel = self.mq.channel()
-        channel.basic_consume(queue=self.queueName, on_message_callback=dealRequest)
-        startTime = time.time()
-        while (True):
-            logging.debug(" [x] keeping the server alive for {0}".format(time.time() - startTime))
-        
-def main():
-    xizhi_server = server()
-    xizhi_server.forever_runner()
-
+@app.route("/v1/validate", methods=["POST"])
+def validate():
+    body = request.get_json()
+    if (body == None):
+        data = {
+            "message": "malformed json body"
+        }
+        response = app.response_class(
+            response=json.dumps(data),
+            status=400,
+            mimetype='application/json'
+        )
+        return response
+    return "", 200
+ 
 if __name__ == "__main__":
-    main()
+    Logger = logging.getLogger(__name__)
+    server_host = os.environ.get("HOST")
+    server_port = os.environ.get("PORT")
+    Logger.setLevel(logging.DEBUG)
+    if (server_host == None):
+        logging.debug("server host is not set, set it as 0.0.0.0 as default")
+        server_host = '0.0.0.0'
+    if (server_port == None):
+        logging.debug("port is not set, set it as 5000 as default")
+        server_port = 5000
+    server_port = int(server_port)
+    app.run(host=server_host, port=server_port)
