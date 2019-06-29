@@ -1,9 +1,16 @@
 from flask import Flask
 from flask import request
 from flask import json
+import sys
+sys.path.append('Handwriting-Authentication-System')
+import ClientModel
 import os
 
 import logging
+
+"""
+HWAT Project
+"""
 
 app = Flask(__name__)
  
