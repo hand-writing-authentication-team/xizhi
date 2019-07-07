@@ -2,17 +2,46 @@ from flask import Flask
 from flask import request
 from flask import json
 import sys
-sys.path.append('Handwriting-Authentication-System')
-import ClientModel
 import os
 
 import logging
+"""
+To Qiushi,
+
+About the Client Model
+    *   Instance has two functionality:
+        1. register: input <image list> output: <user_model, status, msg>
+        2. authentication:  input <image, user_model> output: <status, msg>
+
+I have given sample code to use the module.
+And if you have any question about the code, plz feel free to knock me on WeChat.
+
+Oh I have changed the version of some packages, plz update them using requirements.txt in both xizhi/ and Hand.../
+
+The folder setup is like this:
+- xizhi/
+    - Handwriting-Authentication-System/
+        - ... all auth module codes ... <you can clone github directly>
+    - server.py
+    - ... other stuffs in repo `xizhi`.
+
+Fangrui 7th, Jul
+"""
+sys.path.append('Handwriting-Authentication-System')
+from extractor import *
+from detector import *
+import ClientModel
 
 """
 HWAT Project
 """
 
 app = Flask(__name__)
+d = ContourBox.ContourBox()
+
+e = HarrisLBP.HarrisLBP()
+
+authModule = ClientModel.HandWritingAuthInstance(d, e, debug=True)
  
 @app.route("/")
 def hello():
@@ -20,6 +49,16 @@ def hello():
 
 @app.route("/v1/analyze", methods=["POST"])
 def analyze():
+    """
+    analyze the json and parse the info then pass them into the auth module
+
+    NOTE:   be advised that the registration process need list of images
+            which means that you need to collect all user's writing samples
+
+    TODO:   we prefer a update to a single-shot registraction process
+            we gonna work on this in the future.
+    :return:
+    """
     body = request.get_json()
     if (body == None):
         data = {
@@ -30,6 +69,17 @@ def analyze():
             status=400,
             mimetype='application/json'
         )
+
+        """
+        #   Sample code
+        #   `min_poi` means the tolerance in matching strategy, a hyper-parameter
+        #   high `min_poi` will lead to strict matching strategy, causing possible failure in reg proc.
+        #   user_model includes (reg_ratio, reg_kp, reg_feat)
+        #       you can debug yourself to see the shape. They are all ND-array in numpy format
+        #       The easiest way to storage user model is to dump them locally and using hash to name them.(np.load/save)
+        user_model, status, status_info = authModule.register(image_list, min_poi=6)
+        #   Then save the user model to the database.
+        """
         return response
     return "", 200
 
@@ -45,6 +95,12 @@ def validate():
             status=400,
             mimetype='application/json'
         )
+        """
+        #   Sample code
+        #   auth proc only returns the status and msg
+        #   but you need to load the user model in the first hand
+        status, status_info = client.authenticate(test.classes[0][0], reg_info, min_poi=6)
+        """
         return response
     return "", 200
  
@@ -60,4 +116,4 @@ if __name__ == "__main__":
         logging.debug("port is not set, set it as 5000 as default")
         server_port = 5000
     server_port = int(server_port)
-    app.run(host=server_host, port=server_port)
+    app.run(host=server_host, port=server_port, debug=True)
