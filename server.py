@@ -1,6 +1,9 @@
 from flask import Flask
 from flask import request
 from flask import json
+from flask import jsonify
+from utils import img_converter
+import cPickle as pickle
 import sys
 import os
 
@@ -30,11 +33,16 @@ Fangrui 7th, Jul
 sys.path.append('Handwriting-Authentication-System')
 from extractor import *
 from detector import *
+import util
+from util.TranslateLayer import TranslateLayer
 import ClientModel
 
 """
 HWAT Project
 """
+
+tmpModel = None
+trsltlyr = TranslateLayer()
 
 app = Flask(__name__)
 d = ContourBox.ContourBox()
@@ -81,7 +89,16 @@ def analyze():
         #   Then save the user model to the database.
         """
         return response
-    return "", 200
+
+    handwriting_content = body["handwriting"]
+    logging.info("handwriting received is {}", handwriting_content)
+    cvImg = img_converter.readb64(handwriting_content)
+
+    logging.info("getting the information {}", cvImg)
+    image_list = [cvImg]
+    user_model, status, status_info = authModule.register(image_list, min_poi=6)
+    
+    return trsltlyr.serialize(user_model), 200
 
 @app.route("/v1/validate", methods=["POST"])
 def validate():
@@ -102,7 +119,21 @@ def validate():
         status, status_info = client.authenticate(test.classes[0][0], reg_info, min_poi=6)
         """
         return response
-    return "", 200
+
+    handwriting_content = body["handwriting"]
+    serialized_user_model = body["user_model"]
+    user_model = trsltlyr.deserialize(serialized_user_model)
+    logging.info("handwriting received is {}", handwriting_content)
+    # if serialized_user_model is None:
+    #     return "got not user model", 400
+    # user_model = pickle.loads(serialized_user_model)
+    cvImg = img_converter.readb64(handwriting_content)
+    image_list = [cvImg]
+    status, status_info = authModule.authenticate(cvImg, user_model, min_poi=6)
+    if status:
+        return "Ok", 200
+    else:
+        return "Not ok", 401
  
 if __name__ == "__main__":
     Logger = logging.getLogger(__name__)
