@@ -1,0 +1,3 @@
+[submodule "Handwriting-Authentication-System"]
+	path = Handwriting-Authentication-System
+	url = https://github.com/hand-writing-authentication-team/Handwriting-Authentication-System.git
