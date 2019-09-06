@@ -98,7 +98,10 @@ def analyze():
     image_list = [cvImg]
     user_model, status, status_info = authModule.register(image_list, min_poi=6)
     
-    return trsltlyr.serialize(user_model), 200
+    resp = {
+        "user_model": trsltlyr.serialize(user_model)
+    }
+    return jsonify(resp), 200
 
 @app.route("/v1/validate", methods=["POST"])
 def validate():

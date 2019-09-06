@@ -7,4 +7,9 @@ WORKDIR /opt/xizhi
 
 RUN pip install -r requirements.txt
 
+WORKDIR /opt/xizhi/Handwriting-Authentication-System
+RUN pip install -r requirements.txt
+
+WORKDIR /opt/xizhi
+
 CMD ["python", "server.py"]
